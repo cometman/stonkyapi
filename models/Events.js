@@ -8,27 +8,22 @@ class Event extends Model {
 
   static async saveEvent(json) {
     console.log('Event JSON', json);
-    const userNameFetch = await axios.get(`https://api.twitch.tv/kraken/users/${json.event.broadcaster_user_id}`);
+    let username;
+    try {
+      const userNameFetch = await axios.get(`https://api.twitch.tv/kraken/users/${json.broadcaster_user_id}`);
+      username = userNameFetch.display_name;
+    } catch (err) {
+      console.log(err);
+      username = null;
+    }
     const value = {
-      streamer_name: userNameFetch.display_name,
-      viewer_name: json.event.user_id,
-      event_type: json.subscription.type,
+      streamer_name: username,
+      viewer_name: json.user_name,
+      event_type: 'follow', // TODO, when we expand this to other events we need to detect the event type
     };
-    Event.query().insert(value);
+    const result = Event.query().insert(value);
+    console.log('Event save result', result);
   }
-  // static async findAccountByEmail(email) {
-  //   let acc = await Account.query().where('email', email);
-  //   if (acc[0].parent_account != null) {
-  //     acc = acc.parent_account
-  //   }
-  //   return acc[0];
-  // }
-  // subAccounts() {
-  //   var _this = this;
-  //   return Account.query().where('parent_account', _this.id).then(function (acc) {
-  //     return acc;
-  //   });
-  // }
 }
 
 module.exports = Event;

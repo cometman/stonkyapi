@@ -1,16 +1,19 @@
 const express = require('express');
 const https = require('https');
 const bodyParser = require('body-parser');
+const WebSocket = require('ws');
+
+const websocketServer = new WebSocket.Server({ port: 3030 });
 
 const app = express();
 const port = process.env.PORT || 8000;
 const TWITCH_SECRET = 'bo8pi74tz8so3hdx88qciuns7q8b3f';
 const TWITCH_CLIENT_ID = 'ams7dmtzp7zv8gi4d1smuodlspral7';
-// const API_BASE_URL = 'https://stonkyapi.herokuapp.com';
-const API_BASE_URL = 'https://d53cc6adb2b2.ngrok.io';
+const API_BASE_URL = 'https://stonkyapi.herokuapp.com';
+// const API_BASE_URL = 'https://d53cc6adb2b2.ngrok.io';
 // const API_BASE_URL = 'http://localhost:8000';
-// const API_FRONT_END_URL = 'https://aqueous-sierra-81716.herokuapp.com';
-const API_FRONT_END_URL = 'http://localhost:3000';
+const API_FRONT_END_URL = 'https://aqueous-sierra-81716.herokuapp.com';
+// const API_FRONT_END_URL = 'http://localhost:3000';
 const TWITCH_REDIRECT_URL = `${API_BASE_URL}/auth`;
 const FRONT_END_LANDING_URL = `${API_FRONT_END_URL}/login`;
 
@@ -78,20 +81,45 @@ const getBroadcastID = async (streamerName) => {
 };
 
 app.get('/', async (req, res) => {
-  const tokenTest = await getBroadcastID('moonmoon');
-  console.log(tokenTest);
+  // const tokenTest = await getBroadcastID('moonmoon');
+  // console.log(tokenTest);
+  // Event.saveEvent({ broadcaster_user_id: 'clay', user_name: 'user selby' });
   res.send('Stonky API is up');
 });
 
+app.get('/view', async (req, res) => {
+  const events = await Event.query();
+  res.send(events);
+});
 app.post('/webhooks/twitch', async (req, res) => {
   // Send back the challenge to verify. # https://dev.twitch.tv/docs/eventsub
-  console.log('WEBHOOKS TWITCH**********', req.body);
+  console.log('Webhooks POST Twitch', req.body);
+
+  // const parts = url.parse(req.url);
+  const challenge = req.params['hub.challenge'];
   try {
-    if (req.body && req.body.challenge) {
-      res.send(req.body.challenge);
-    }
-    if (req.body && req.body.event) {
+    if (challenge) {
+      res.send(challenge);
+    } else {
       Event.saveEvent(req.body);
+      res.status(200).send('Event saved');
+    }
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+app.get('/webhooks/twitch', async (req, res) => {
+  // Send back the challenge to verify. # https://dev.twitch.tv/docs/eventsub
+  console.log('Webhooks GET Twitch', req.body);
+
+  // const parts = url.parse(req.url);
+  const challenge = req.params['hub.challenge'];
+  try {
+    if (challenge) {
+      res.send(challenge);
+    } else {
+      // Event.saveEvent(req.body);
       res.status(200).send('Event saved');
     }
   } catch (err) {
@@ -106,7 +134,7 @@ app.post('/follow', async (req, res) => {
   const options = {
     hostname: 'api.twitch.tv',
     port: 443,
-    path: '/helix/eventsub/subscriptions',
+    path: '/helix/webhooks/hub',
     method: 'POST',
     headers: {
       Authorization: `Bearer ${TWITCH_APP_ACCESS_TOKEN}`,
@@ -117,16 +145,10 @@ app.post('/follow', async (req, res) => {
 
   async function registerSubscription(subType) {
     const body = JSON.stringify({
-      type: subType,
-      version: '1',
-      condition: {
-        broadcaster_user_id: broadcastID,
-      },
-      transport: {
-        method: 'webhook',
-        callback: `${API_BASE_URL}/webhooks/twitch`,
-        secret: 'bigsecret!!',
-      },
+      'hub.callback': `${API_BASE_URL}/webhooks/twitch`,
+      'hub.mode': 'subscribe',
+      'hub.topic': subType,
+      'hub.lease_seconds': 864000,
     });
 
     const startSubscription = new Promise((resolve, reject) => {
@@ -138,13 +160,7 @@ app.post('/follow', async (req, res) => {
         });
 
         twRes.on('end', () => {
-          const buffer = Buffer.concat(data);
-          const broadcastData = JSON.parse(buffer.toString());
-          if (broadcastData.data) {
-            resolve(broadcastData.data[0].id);
-          } else {
-            resolve(null);
-          }
+          resolve();
         });
       });
 
@@ -160,7 +176,7 @@ app.post('/follow', async (req, res) => {
   }
 
   // Types of subscription events we want to listen to
-  const subscriptionTypes = ['channel.update', 'channel.follow', 'channel.subscribe', 'channel.cheer'];
+  const subscriptionTypes = [`https://api.twitch.tv/helix/users/follows?first=1&to_id=${broadcastID}`];
 
   subscriptionTypes.forEach((subType) => {
     registerSubscription(subType);
@@ -224,4 +240,52 @@ app.get('/auth', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port} !`);
+});
+
+// const people = await Person.query();
+const events = [];
+let currentEvent = 0;
+let lastSentEvent = 0;
+
+function fetchEvents() {
+  Event.query().then((evt) => {
+    events.concat(evt);
+  });
+  console.log('LENGTH', events);
+
+  currentEvent = events.length;
+}
+// when a websocket connection is established
+websocketServer.on('connection', (webSocketClient) => {
+  webSocketClient.send('{ "connection" : "true"}');
+
+  async function pollEvents() {
+    await new Promise((resolve) => {
+      fetchEvents();
+      resolve();
+    });
+    websocketServer
+      .clients
+      .forEach((client) => {
+        console.log('Events', lastSentEvent, currentEvent);
+        if (lastSentEvent !== currentEvent) {
+          client.send(`{ "message" : ${events[currentEvent]} }`);
+          lastSentEvent = currentEvent;
+        }
+      });
+    // await Event.query();
+  }
+
+  setInterval(pollEvents, 1500);
+
+  // // when a message is received
+  // webSocketClient.on('message', (message) => {
+  //   // for each websocket client
+  //   websocketServer
+  //     .clients
+  //     .forEach((client) => {
+  //       // send the client the current message
+  //       client.send(`{ "message" : ${message} }`);
+  //     });
+  // });
 });
