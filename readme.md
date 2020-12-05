@@ -1,10 +1,12 @@
 ## Heroku
-https://glacial-stream-97333.herokuapp.com/ | https://git.heroku.com/glacial-stream-97333.git
+https://stonkyapi.herokuapp.com/
 
 # Deploy
 `git push heroku master`
 
 `heroku ps:scale web=1`
+
+`heroku logs -t`
 
 # View
 `heroku open`
