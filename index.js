@@ -10,10 +10,7 @@ const port = process.env.PORT || 8000;
 const TWITCH_SECRET = 'bo8pi74tz8so3hdx88qciuns7q8b3f';
 const TWITCH_CLIENT_ID = 'ams7dmtzp7zv8gi4d1smuodlspral7';
 const API_BASE_URL = 'https://stonkyapi.herokuapp.com';
-// const API_BASE_URL = 'https://db6b4121c11a.ngrok.io';
-// const API_BASE_URL = 'http://localhost:8000';
 const API_FRONT_END_URL = 'https://aqueous-sierra-81716.herokuapp.com';
-// const API_FRONT_END_URL = 'http://localhost:3000';
 const TWITCH_REDIRECT_URL = `${API_BASE_URL}/auth`;
 const FRONT_END_LANDING_URL = `${API_FRONT_END_URL}/login`;
 
@@ -72,7 +69,6 @@ const getBroadcastID = async (streamerName) => {
       _res.on('end', () => {
         const buffer = Buffer.concat(data);
         const broadcastData = JSON.parse(buffer.toString());
-        console.log('**************', broadcastData);
         resolve(broadcastData.data[0].id);
       });
     });
@@ -82,6 +78,7 @@ const getBroadcastID = async (streamerName) => {
 
 app.get('/', async (req, res) => {
   // const tokenTest = await getBroadcastID('moonmoon');
+  await Event.query().insert({ streamer_name: 'clay', event_type: 'subscriber', viewer_name: 'danie' });
   res.send('Stonky API is up');
 });
 
@@ -265,7 +262,6 @@ websocketServer.on('connection', (webSocketClient) => {
     websocketServer
       .clients
       .forEach((client) => {
-        // console.log('Events', lastSentEvent, currentEvent);
         if (lastSentEvent !== currentEvent) {
           client.send(`{ "message" : ${events[currentEvent]} }`);
           lastSentEvent = currentEvent;
