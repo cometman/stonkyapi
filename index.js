@@ -10,7 +10,7 @@ const port = process.env.PORT || 8000;
 const TWITCH_SECRET = 'bo8pi74tz8so3hdx88qciuns7q8b3f';
 const TWITCH_CLIENT_ID = 'ams7dmtzp7zv8gi4d1smuodlspral7';
 const API_BASE_URL = 'https://stonkyapi.herokuapp.com';
-// const API_BASE_URL = 'https://d53cc6adb2b2.ngrok.io';
+// const API_BASE_URL = 'https://db6b4121c11a.ngrok.io';
 // const API_BASE_URL = 'http://localhost:8000';
 const API_FRONT_END_URL = 'https://aqueous-sierra-81716.herokuapp.com';
 // const API_FRONT_END_URL = 'http://localhost:3000';
@@ -39,7 +39,7 @@ app.use(bodyParser.json());
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  // res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   next();
 });
 
@@ -82,8 +82,6 @@ const getBroadcastID = async (streamerName) => {
 
 app.get('/', async (req, res) => {
   // const tokenTest = await getBroadcastID('moonmoon');
-  // console.log(tokenTest);
-  // Event.saveEvent({ broadcaster_user_id: 'clay', user_name: 'user selby' });
   res.send('Stonky API is up');
 });
 
@@ -91,6 +89,7 @@ app.get('/view', async (req, res) => {
   const events = await Event.query();
   res.send(events);
 });
+
 app.post('/webhooks/twitch', async (req, res) => {
   // Send back the challenge to verify. # https://dev.twitch.tv/docs/eventsub
   console.log('Webhooks POST Twitch', req.body);
@@ -251,8 +250,7 @@ function fetchEvents() {
   Event.query().then((evt) => {
     events.concat(evt);
   });
-  console.log('LENGTH', events);
-
+  // console.log('LENGTH', events);
   currentEvent = events.length;
 }
 // when a websocket connection is established
@@ -267,7 +265,7 @@ websocketServer.on('connection', (webSocketClient) => {
     websocketServer
       .clients
       .forEach((client) => {
-        console.log('Events', lastSentEvent, currentEvent);
+        // console.log('Events', lastSentEvent, currentEvent);
         if (lastSentEvent !== currentEvent) {
           client.send(`{ "message" : ${events[currentEvent]} }`);
           lastSentEvent = currentEvent;
@@ -276,16 +274,5 @@ websocketServer.on('connection', (webSocketClient) => {
     // await Event.query();
   }
 
-  setInterval(pollEvents, 1500);
-
-  // // when a message is received
-  // webSocketClient.on('message', (message) => {
-  //   // for each websocket client
-  //   websocketServer
-  //     .clients
-  //     .forEach((client) => {
-  //       // send the client the current message
-  //       client.send(`{ "message" : ${message} }`);
-  //     });
-  // });
+  setInterval(pollEvents, 1000);
 });

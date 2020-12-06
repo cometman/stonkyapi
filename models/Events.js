@@ -21,8 +21,7 @@ class Event extends Model {
       viewer_name: json.user_name,
       event_type: 'follow', // TODO, when we expand this to other events we need to detect the event type
     };
-    const result = Event.query().insert(value);
-    console.log('Event save result', result);
+    await Event.query().insert(value);
   }
 }
 
