@@ -228,39 +228,24 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port} !`);
 });
 
-// const people = await Person.query();
-const events = [];
-let currentEvent = 0;
-const lastSentEvent = 0;
-
-function fetchEvents() {
-  Event.query().then((evt) => {
-    events.concat(evt);
-  });
-  // console.log('LENGTH', events);
-  currentEvent = events.length;
-}
 // when a websocket connection is established
 websocketServer.on('connection', (webSocketClient) => {
   webSocketClient.send('{ "connection" : "true"}');
-
+  let lastEvent = null;
   async function pollEvents() {
-    await new Promise((resolve) => {
-      fetchEvents();
-      resolve();
-    });
     websocketServer
       .clients
       .forEach(async (client) => {
         const recentEvent = (await Event.query().orderBy('created_at', 'desc'))[0].toJSON();
-        // debugger;
-        // if (lastSentEvent !== currentEvent) {
-        client.send(`{"message": ${JSON.stringify(recentEvent)}}`);
-        //   lastSentEvent = currentEvent;
+        if (!lastEvent || (lastEvent.viewer_name !== recentEvent.viewer_name)) {
+          lastEvent = recentEvent;
+          client.send(`{"message": ${JSON.stringify(recentEvent)}}`);
+        }
+
         // }
       });
-    // await Event.query();
+    // await Event.query();`
   }
 
-  setInterval(pollEvents, 10000);
+  setInterval(pollEvents, 1000);
 });
