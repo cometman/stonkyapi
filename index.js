@@ -10,7 +10,10 @@ const port = process.env.PORT || 8000;
 const TWITCH_SECRET = 'bo8pi74tz8so3hdx88qciuns7q8b3f';
 const TWITCH_CLIENT_ID = 'ams7dmtzp7zv8gi4d1smuodlspral7';
 const API_BASE_URL = 'https://stonkyapi.herokuapp.com';
+// const API_BASE_URL = 'http://localhost:8000';
+// const API_BASE_URL = 'https://a921b52a0d57.ngrok.io';
 const API_FRONT_END_URL = 'https://aqueous-sierra-81716.herokuapp.com';
+// const API_FRONT_END_URL = 'http://localhost:3000';
 const TWITCH_REDIRECT_URL = `${API_BASE_URL}/auth`;
 const FRONT_END_LANDING_URL = `${API_FRONT_END_URL}/login`;
 
@@ -36,7 +39,7 @@ app.use(bodyParser.json());
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  // res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   next();
 });
 
@@ -90,16 +93,9 @@ app.get('/view', async (req, res) => {
 app.post('/webhooks/twitch', async (req, res) => {
   // Send back the challenge to verify. # https://dev.twitch.tv/docs/eventsub
   console.log('Webhooks POST Twitch', req.body);
-
-  // const parts = url.parse(req.url);
-  const challenge = req.params['hub.challenge'];
   try {
-    if (challenge) {
-      res.send(challenge);
-    } else {
-      Event.saveEvent(req.body);
-      res.status(200).send('Event saved');
-    }
+    Event.saveEvent(req.body);
+    res.status(200).send('Event saved');
   } catch (err) {
     console.log(err);
   }
@@ -107,20 +103,11 @@ app.post('/webhooks/twitch', async (req, res) => {
 
 app.get('/webhooks/twitch', async (req, res) => {
   // Send back the challenge to verify. # https://dev.twitch.tv/docs/eventsub
-  console.log('Webhooks GET Twitch', req.body);
-
-  // const parts = url.parse(req.url);
-  const challenge = req.params['hub.challenge'];
-  try {
-    if (challenge) {
-      res.send(challenge);
-    } else {
-      // Event.saveEvent(req.body);
-      res.status(200).send('Event saved');
-    }
-  } catch (err) {
-    console.log(err);
-  }
+  console.log('Webhooks GET Twitch Params', req.query);
+  console.log('Webhook challenge', req.query['hub.challenge']);
+  const challenge = req.query['hub.challenge'];
+  res.set('Content-Type', 'text/plain');
+  res.status(200).send(challenge);
 });
 
 app.post('/follow', async (req, res) => {
@@ -156,6 +143,9 @@ app.post('/follow', async (req, res) => {
         });
 
         twRes.on('end', () => {
+          const buffer = Buffer.concat(data);
+
+          console.log('Buffer', buffer.toString());
           resolve();
         });
       });
@@ -187,7 +177,7 @@ app.get('/auth', async (req, res) => {
   if (requestType === 'app') {
     url = `/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_SECRET}&grant_type=client_credentials`;
   } else {
-    url = `/oauth2/authorize?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_SECRET}&code=${authCode}&grant_type=authorization_code&redirect_uri=${TWITCH_REDIRECT_URL}`;
+    url = `/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_SECRET}&code=${authCode}&grant_type=authorization_code&redirect_uri=${FRONT_END_LANDING_URL}`;
   }
   // If auth code is in payload, peform token exchange;
   if (!authCode && requestType !== 'app') {
@@ -198,9 +188,9 @@ app.get('/auth', async (req, res) => {
     port: 443,
     path: url,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    // headers: {
+    //   'Content-Type': 'application/json',
+    // },
   };
 
   const accessTokenReq = https.request(options, (_res) => {
@@ -241,7 +231,7 @@ app.listen(port, () => {
 // const people = await Person.query();
 const events = [];
 let currentEvent = 0;
-let lastSentEvent = 0;
+const lastSentEvent = 0;
 
 function fetchEvents() {
   Event.query().then((evt) => {
@@ -261,14 +251,16 @@ websocketServer.on('connection', (webSocketClient) => {
     });
     websocketServer
       .clients
-      .forEach((client) => {
-        if (lastSentEvent !== currentEvent) {
-          client.send(`{ "message" : ${events[currentEvent]} }`);
-          lastSentEvent = currentEvent;
-        }
+      .forEach(async (client) => {
+        const recentEvent = (await Event.query().orderBy('created_at', 'desc'))[0].toJSON();
+        // debugger;
+        // if (lastSentEvent !== currentEvent) {
+        client.send(`{"message": ${JSON.stringify(recentEvent)}}`);
+        //   lastSentEvent = currentEvent;
+        // }
       });
     // await Event.query();
   }
 
-  setInterval(pollEvents, 1000);
+  setInterval(pollEvents, 10000);
 });
