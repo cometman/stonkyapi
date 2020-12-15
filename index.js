@@ -1,12 +1,13 @@
 const express = require('express');
 const https = require('https');
 const bodyParser = require('body-parser');
-const WebSocket = require('ws');
+const { Server } = require('ws');
 
-const websocketServer = new WebSocket.Server({ port: 3030 });
+// const websocketServer = new WebSocket.Server({ port: 3030 });
 
 const app = express();
-const port = process.env.PORT || 8000;
+const websocketServer = new Server({ server: app });
+const port = 8000;
 const TWITCH_SECRET = 'bo8pi74tz8so3hdx88qciuns7q8b3f';
 const TWITCH_CLIENT_ID = 'ams7dmtzp7zv8gi4d1smuodlspral7';
 const API_BASE_URL = 'https://stonkyapi.herokuapp.com';
