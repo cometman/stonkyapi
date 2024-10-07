@@ -8,8 +8,8 @@ const { Server } = require('ws');
 const app = express();
 const websocketServer = new Server({ server: app });
 const port = 8000;
-const TWITCH_SECRET = 'bo8pi74tz8so3hdx88qciuns7q8b3f';
-const TWITCH_CLIENT_ID = 'ams7dmtzp7zv8gi4d1smuodlspral7';
+const TWITCH_SECRET = '';
+const TWITCH_CLIENT_ID = '';
 const API_BASE_URL = 'https://stonkyapi.herokuapp.com';
 // const API_BASE_URL = 'http://localhost:8000';
 // const API_BASE_URL = 'https://a921b52a0d57.ngrok.io';
@@ -28,7 +28,7 @@ const knex = Knex(knexConfig[environment]);
 
 // TODO
 // make a process to refresh this access token automatically
-const TWITCH_APP_ACCESS_TOKEN = 'sk8a1zyk4qyx39tly5m8qwbzhp1m1x';
+const TWITCH_APP_ACCESS_TOKEN = '';
 
 Model.knex(knex);
 
